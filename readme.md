@@ -1,3 +1,5 @@
+![Floorpy Logo](floorpy.png)
+
 ## Overview
 Floorpy is an automated Windows batch script designed for the Firefox Floorp browser and compile it into a highly compressed 91MB, portable Self-Extracting Executable (SFX). 
 
