@@ -44,6 +44,11 @@ Optional:
    * **`F`**: Build from the current local `floorp/` folder.
    * **`U`**: Download the latest Floorp release, then build.
 
+## Offline Builds
+Internet access is not required if `floorp/` already contains the browser files. Choose **`F`** in `Build.bat` to debloat and package the existing local `floorp/` folder without downloading anything.
+
+Use **`1`** or **`U`** only when you want the script to refresh `floorp/` from the latest online Floorp release.
+
 ## Technical Notes & Limitations
 * **Engine Architecture:** The core `omni.ja` archive is intentionally bypassed during the debloat phase. Altering this file with standard 7-Zip compression corrupts the structural offsets required by the Gecko engine, resulting in fatal XPCOM initialization errors. Do not attempt to debloat `omni.ja` manually.
 * **Generated Files:** `floorp.7z`, `floorpy.exe`, `.build/`, and `floorp.previous/` are build outputs and are ignored by Git.
