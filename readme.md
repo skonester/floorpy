@@ -1,10 +1,11 @@
 ![Floorpy Logo](floorpy.png)
 
 ## Overview
-Floorpy is an automated Windows batch script designed for the Firefox Floorp browser and compile it into a highly compressed 91MB, portable Self-Extracting Executable (SFX). 
+Floorpy is a Windows batch build script that packages the Floorp browser into a portable Self-Extracting Executable (SFX).
 
 ## Features
-* **Automated Debloating:** Strips unnecessary telemetry, updaters, and non-essential directories to reduce the footprint while maintaining critical media pipeline stability (Widevine DRM and Direct3D functionality are strictly preserved).
+* **Latest Floorp Download:** Can download the current Windows x64 Floorp release from the official Floorp GitHub releases and refresh the local `floorp/` folder automatically.
+* **Automated Debloating:** Strips unnecessary updaters and non-essential directories to reduce the footprint while maintaining critical media pipeline stability.
 * **High-Ratio Compression:** Utilizes LZMA2 (7-Zip) maximum compression to drastically shrink the core binaries.
 * **Portable SFX Generation:** Packages the compressed archive into a standalone `floorpy.exe` that executes the browser seamlessly.
 * **Resource Injection:** Automatically applies custom icons and manifest configurations to the final executable using Resource Hacker.
@@ -18,9 +19,8 @@ Floorpy is an automated Windows batch script designed for the Firefox Floorp bro
 
 
 ## Prerequisites
-To ensure structural integrity during the build process, the following files and directories must be present in the exact same root folder as the primary batch script:
+The build script can either use an existing `floorp/` folder or download the latest Floorp release for you. These files must be present next to `Build.bat`:
 
-* `floorp/` - The source directory containing the raw Floorp browser files.
 * `7za64.exe` - 7-Zip standalone command-line executable.
 * `7zS264.sfx` - 7-Zip Self-Extracting module.
 * `ResourceHacker.exe` - Command-line resource compiler.
@@ -28,15 +28,23 @@ To ensure structural integrity during the build process, the following files and
 * `Manifest.txt` - Configuration manifest for the final executable.
 * `run.bat` - The internal execution script that is packaged and triggered when the SFX is launched.
 
+Optional:
+
+* `floorp/` - Existing Floorp browser files. If absent or stale, use the update option in `Build.bat`.
+* `TempProfile/` - A root-level profile template. If present, it is copied into `floorp/TempProfile` during debloat.
+
 ## Usage
 1. Run the primary batch script.
 2. Select the desired operation from the interactive command menu:
-   * **`1`**: Debloat the `floorp` directory.
-   * **`2`**: Pack the directory into a `.7z` archive.
-   * **`3`**: Generate the SFX executable (`floorpy.exe`).
-   * **`4`**: Inject the custom icon and manifest.
-   * **`F`**: Execute all steps (1-4) automatically in sequence.
+   * **`1`**: Download the latest Windows x64 Floorp release into `floorp/`.
+   * **`2`**: Debloat the `floorp/` directory.
+   * **`3`**: Pack `floorp/` and `run.bat` into `floorp.7z`.
+   * **`4`**: Generate the SFX executable (`floorpy.exe`).
+   * **`5`**: Inject the custom icon and manifest.
+   * **`F`**: Build from the current local `floorp/` folder.
+   * **`U`**: Download the latest Floorp release, then build.
 
 ## Technical Notes & Limitations
 * **Engine Architecture:** The core `omni.ja` archive is intentionally bypassed during the debloat phase. Altering this file with standard 7-Zip compression corrupts the structural offsets required by the Gecko engine, resulting in fatal XPCOM initialization errors. Do not attempt to debloat `omni.ja` manually.
-* **Version Control:** If pushing this project to a repository, Git Large File Storage (LFS) must be initialized to track the massive internal binaries (e.g., `*.dll`, `*.ja`) to bypass standard 100MB file size limitations.
+* **Generated Files:** `floorp.7z`, `floorpy.exe`, `.build/`, and `floorp.previous/` are build outputs and are ignored by Git.
+* **Version Control:** If pushing `floorp/` itself to a repository, Git Large File Storage (LFS) should be used for large internal binaries such as `*.dll` and `*.ja`.
