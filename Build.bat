@@ -22,27 +22,25 @@ echo.
 echo Floorpy build
 echo.
 echo 1. Download latest Floorp into floorp\
-echo 2. Debloat floorp\
-echo 3. Pack floorp\ and run.bat into floorp.7z
-echo 4. Create floorpy.exe from the SFX module
-echo 5. Add icon and manifest with Resource Hacker
+echo 2. Pack floorp\ and run.bat into floorp.7z
+echo 3. Create floorpy.exe from the SFX module
+echo 4. Add icon and manifest with Resource Hacker
 echo.
 echo F. Build from the current floorp\ folder
 echo U. Update Floorp, then build
 echo Q. Quit
 echo.
-choice /C 12345FUQ /N /M "Build option: "
-if errorlevel 8 goto done
-if errorlevel 7 goto updatebuild
-if errorlevel 6 goto localbuild
-if errorlevel 5 call :resourcehack & goto menu
-if errorlevel 4 call :makesfx & goto menu
-if errorlevel 3 call :pack & goto menu
-if errorlevel 2 call :debloat & goto menu
-if errorlevel 1 call :downloadfloorp & goto menu
+choice /C 1234FUQ /N /M "Build option: "
+if errorlevel 7 goto done
+if errorlevel 6 goto updatebuild
+if errorlevel 5 goto localbuild
+if errorlevel 4 call :resourcehack
+if errorlevel 3 call :makesfx
+if errorlevel 2 call :pack
+if errorlevel 1 call :downloadfloorp
+goto menu
 
 :localbuild
-call :debloat || goto failed
 call :pack || goto failed
 call :makesfx || goto failed
 call :resourcehack || goto failed
@@ -50,7 +48,6 @@ goto success
 
 :updatebuild
 call :downloadfloorp || goto failed
-call :debloat || goto failed
 call :pack || goto failed
 call :makesfx || goto failed
 call :resourcehack || goto failed
@@ -130,81 +127,6 @@ for %%I in ("%FLOORP_INSTALLER%") do (
 echo Downloaded file is too small to be the Floorp installer.
 exit /b 1
 
-:debloat
-echo.
-echo Debloating "%INPUT_DIR%"...
-if not exist "%INPUT_DIR%\floorp.exe" (
-    echo Error: "%INPUT_DIR%\floorp.exe" was not found.
-    echo Run option 1 to download Floorp, or place Floorp files in floorp\.
-    exit /b 1
-)
-
-set /a DEBLOAT_REMOVED=0
-pushd "%INPUT_DIR%" || exit /b 1
-
-echo Removing optional directories...
-for %%d in (desktop-launcher extensions fonts isp uninstall) do call :removedir "%%d"
-
-echo Removing updater, telemetry, and installer files...
-for %%f in (
-    blocklist.xml
-    crashreporter.exe
-    default-browser-agent.exe
-    install.log
-    maintenanceservice.exe
-    maintenanceservice_installer.exe
-    minidump-analyzer.exe
-    notificationserver.dll
-    pingsender.exe
-    removed-files
-    update-settings.ini
-    updater.exe
-    updater.ini
-) do call :removefile "%%f"
-
-popd
-
-if exist "%ROOT%TempProfile\" (
-    echo Copying root TempProfile into floorp\TempProfile...
-    if exist "%INPUT_DIR%\TempProfile" rmdir /s /q "%INPUT_DIR%\TempProfile"
-    xcopy /E /I /Y "%ROOT%TempProfile\" "%INPUT_DIR%\TempProfile\" >nul
-)
-
-if "%DEBLOAT_REMOVED%"=="0" (
-    echo Debloat complete. No matching files or directories were found; floorp\ already looks clean.
-) else (
-    echo Debloat complete. Removed %DEBLOAT_REMOVED% items.
-)
-exit /b 0
-
-:removedir
-if exist "%~1\" (
-    rmdir /s /q "%~1"
-    if exist "%~1\" (
-        echo Warning: could not remove directory: %~1
-    ) else (
-        echo Removed directory: %~1
-        set /a DEBLOAT_REMOVED+=1
-    )
-) else (
-    echo Skipped missing directory: %~1
-)
-exit /b 0
-
-:removefile
-if exist "%~1" (
-    del /q "%~1"
-    if exist "%~1" (
-        echo Warning: could not remove file: %~1
-    ) else (
-        echo Removed file: %~1
-        set /a DEBLOAT_REMOVED+=1
-    )
-) else (
-    echo Skipped missing file: %~1
-)
-exit /b 0
-
 :pack
 echo.
 echo Packing "%INPUT_DIR%"...
@@ -279,15 +201,22 @@ exit /b 0
 
 :find7z
 set "SEVEN_ZIP="
+:: Prefer the CLI builds (7za / 7za64). The 7z.exe GUI binary is intentionally
+:: avoided because it spawns a window and is not suitable for scripted use.
 if exist "%ROOT_7Z%" set "SEVEN_ZIP=%ROOT_7Z%"
 if not defined SEVEN_ZIP if exist "%ProgramFiles%\7-Zip\7za.exe" set "SEVEN_ZIP=%ProgramFiles%\7-Zip\7za.exe"
-if not defined SEVEN_ZIP if exist "%ProgramFiles%\7-Zip\7z.exe" set "SEVEN_ZIP=%ProgramFiles%\7-Zip\7z.exe"
 if not defined SEVEN_ZIP if exist "%ProgramFiles(x86)%\7-Zip\7za.exe" set "SEVEN_ZIP=%ProgramFiles(x86)%\7-Zip\7za.exe"
-if not defined SEVEN_ZIP if exist "%ProgramFiles(x86)%\7-Zip\7z.exe" set "SEVEN_ZIP=%ProgramFiles(x86)%\7-Zip\7z.exe"
+if not defined SEVEN_ZIP if exist "%ProgramFiles%\7-Zip\7za64.exe" set "SEVEN_ZIP=%ProgramFiles%\7-Zip\7za64.exe"
+if not defined SEVEN_ZIP if exist "%ProgramFiles(x86)%\7-Zip\7za64.exe" set "SEVEN_ZIP=%ProgramFiles(x86)%\7-Zip\7za64.exe"
+if not defined SEVEN_ZIP for %%I in (7za.exe 7za64.exe) do (
+    for /f "delims=" %%P in ('where %%I 2^>nul') do (
+        if not defined SEVEN_ZIP set "SEVEN_ZIP=%%P"
+    )
+)
 
 if not defined SEVEN_ZIP (
     echo Error: 7-Zip command line tool was not found.
-    echo Place 7za64.exe next to Build.bat or install 7-Zip.
+    echo Place 7za64.exe next to Build.bat or install 7-Zip CLI.
     exit /b 1
 )
 exit /b 0
