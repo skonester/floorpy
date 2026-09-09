@@ -106,7 +106,7 @@ jobs:
           ls bin/release
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           latest: true
           tag_name: v${{ env.FLOORP_VERSION }}
