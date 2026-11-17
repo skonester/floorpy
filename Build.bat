@@ -17,6 +17,17 @@ set "FLOORP_URL=https://github.com/Floorp-Projects/Floorp/releases/latest/downlo
 set "FLOORP_LEGACY_URL=https://github.com/Floorp-Projects/Floorp/releases/latest/download/floorp-win64.installer.exe"
 set "FLOORP_INSTALLER=%DOWNLOAD_DIR%\floorp-win64.installer.exe"
 
+set "NONINTERACTIVE="
+if "%~1"=="" goto menu
+set "NONINTERACTIVE=1"
+if not "%~2"=="" goto usage
+if /I "%~1"=="--update" goto updatebuild
+if /I "%~1"=="--local" goto localbuild
+
+:usage
+echo Usage: %~nx0 [--update ^| --local]
+exit /b 2
+
 :menu
 echo.
 echo Floorpy build
@@ -34,10 +45,26 @@ choice /C 1234FUQ /N /M "Build option: "
 if errorlevel 7 goto done
 if errorlevel 6 goto updatebuild
 if errorlevel 5 goto localbuild
-if errorlevel 4 call :resourcehack
-if errorlevel 3 call :makesfx
-if errorlevel 2 call :pack
-if errorlevel 1 call :downloadfloorp
+if errorlevel 4 goto resourcestep
+if errorlevel 3 goto sfxstep
+if errorlevel 2 goto packstep
+if errorlevel 1 goto downloadstep
+goto menu
+
+:downloadstep
+call :downloadfloorp || goto failed
+goto menu
+
+:packstep
+call :pack || goto failed
+goto menu
+
+:sfxstep
+call :makesfx || goto failed
+goto menu
+
+:resourcestep
+call :resourcehack || goto failed
 goto menu
 
 :localbuild
@@ -245,13 +272,13 @@ exit /b 0
 :success
 echo.
 echo Build completed successfully.
-pause
+if not defined NONINTERACTIVE pause
 exit /b 0
 
 :failed
 echo.
 echo Build failed.
-pause
+if not defined NONINTERACTIVE pause
 exit /b 1
 
 :done

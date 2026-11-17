@@ -1,5 +1,6 @@
 @echo off
-cd /d "%~dp0"
+setlocal EnableExtensions DisableDelayedExpansion
+cd /d "%~dp0" || exit /b 1
 echo.
 echo Starting Floorpy... Leave this window open, closing it could prevent cleaning temporary files.
 
@@ -32,8 +33,7 @@ echo.
 echo If this window doesn't close automatically you may need to force close it.
 echo.
 
-REM Exit if the script isn't in %temp%
-echo "%~dp0" | findstr /I /C:"%temp%" >nul 2>&1
+call :validatecleanup
 if errorlevel 1 (
     echo Warning: Script is not running from a temporary location. Skipping temporary file cleanup.
     pause
@@ -41,9 +41,37 @@ if errorlevel 1 (
 )
 
 echo Cleaning temporary files...
-cd /d "%temp%"
+cd /d "%CLEANUP_TEMP%" || exit /b 1
 ping 127.0.0.1 -n 2 >nul
-rmdir /s /q "%~dp0"
-echo Done.
-ping 127.0.0.1 -n 2 >nul
-exit
+:: Read the remaining commands before deleting this batch file with its folder.
+(
+    rmdir /s /q "%CLEANUP_DIR%"
+    if exist "%CLEANUP_DIR%\" (
+        echo Warning: Could not remove all temporary files.
+        exit /b 1
+    )
+    echo Done.
+    ping 127.0.0.1 -n 2 >nul
+    exit 0
+)
+
+:validatecleanup
+:: Only delete a strict descendant of TEMP, never TEMP itself or a prefix match.
+if not defined TEMP exit /b 1
+for %%I in ("%TEMP%\.") do set "CLEANUP_TEMP=%%~fI"
+for %%I in ("%~dp0.") do set "CLEANUP_DIR=%%~fI"
+if not exist "%CLEANUP_TEMP%\" exit /b 1
+if /I "%CLEANUP_DIR%"=="%CLEANUP_TEMP%" exit /b 1
+
+set "CLEANUP_CANDIDATE=%CLEANUP_DIR%"
+:cleanupancestor
+:: A junction or symbolic link could redirect deletion outside the checked tree.
+for %%I in ("%CLEANUP_CANDIDATE%") do set "CLEANUP_ATTRIBUTES=%%~aI"
+if not defined CLEANUP_ATTRIBUTES exit /b 1
+if not "%CLEANUP_ATTRIBUTES:l=%"=="%CLEANUP_ATTRIBUTES%" exit /b 1
+if /I "%CLEANUP_CANDIDATE%"=="%CLEANUP_TEMP%" exit /b 0
+
+set "CLEANUP_CHILD=%CLEANUP_CANDIDATE%"
+for %%I in ("%CLEANUP_CHILD%\..") do set "CLEANUP_CANDIDATE=%%~fI"
+if /I "%CLEANUP_CANDIDATE%"=="%CLEANUP_CHILD%" exit /b 1
+goto cleanupancestor
