@@ -89,9 +89,19 @@ The same complete build operations are available without menu prompts or pauses:
 
 `--update` downloads Floorp and builds the package, while `--local` builds from the existing `floorp/` folder. Both return exit code `0` on success and `1` on a build failure; unsupported arguments return `2`.
 
-The [Build Floorpy workflow](.github/workflows/build.yml) runs on pushes and pull requests to `main`, and can also be started manually. It runs the Windows regression checks, downloads Floorp, builds `floorpy.exe`, and checks the packaged archive.
+The [Build Floorpy workflow](.github/workflows/build.yml) checks the latest stable Floorp release on pushes to `main`, on manual runs, and hourly at minute 23 UTC. Once the workflow is on the default branch, it handles publishing automatically:
 
-After this workflow is pushed to the default branch, open **Actions > Build Floorpy > Run workflow** to request a fresh build. Download **floorpy-windows-x64** from the successful run's **Artifacts** section. The artifact includes the executable, its SHA-256 checksum, this README, and the repository license, and is retained for 30 days. No additional secrets are required.
+1. On the first run, it builds the current Floorp release and publishes a matching Floorpy release, such as `floorpy-v12.21.2`.
+2. Later checks compare that version's release with the existing Floorpy release. If all release files are already published, the Windows build is skipped.
+3. When Floorp publishes a new stable version, the next check downloads that exact version, verifies its upstream SHA-256 digest, runs the regression checks, builds Floorpy, and verifies the packaged archive before publishing.
+
+Each [GitHub release](https://github.com/skonester/floorpy/releases) includes `floorpy.exe`, `floorpy.exe.sha256`, this README, and the repository license. The newest published package is marked as the latest release. Failed or incomplete uploads can be retried by running the workflow again.
+
+To start a check immediately, open **Actions > Build Floorpy > Run workflow** and select the default branch. Publishing uses GitHub's provided `GITHUB_TOKEN`; no additional secrets are required. Write permission is granted only to the publishing job. Complete releases are left in place, so repeating a check for the same Floorp version does not replace its files.
+
+Pull requests and manual runs from other branches build test artifacts without publishing a release. Download **floorpy-windows-x64** from the successful build's **Artifacts** section; these artifacts contain the same four files and are retained for 30 days.
+
+Scheduled checks use the workflow on the default branch. GitHub may delay scheduled runs and disables schedules in public repositories after 60 days without repository activity; see [GitHub's schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) if automatic checks stop.
 
 ## Run the finished package
 
@@ -116,7 +126,8 @@ The finished `floorpy.exe` contains the browser version used during its build. T
 | `.build/` | Downloaded installer and extraction workspace. |
 | `floorp.previous/` | Backup from the previous browser download. |
 | `ResourceHackerScript.txt` | Legacy standalone resource-editing helper. `Build.bat` applies resources directly. |
-| `tests/` | Windows regression checks for menu dispatch and temporary-folder cleanup. |
+| `tests/` | Regression checks for the Windows batch scripts and release automation. |
+| `scripts/floorp_release.py` | Checks upstream versions and prepares a version-pinned, checksum-verified Floorp payload for CI. |
 
 `floorp.7z`, `floorpy.exe`, `.build/`, and `floorp.previous/` are ignored by Git. The local `floorp/` input folder is not currently ignored; check your changes before committing browser files or a prepared profile.
 
@@ -128,7 +139,7 @@ With Python installed on Windows, run:
 python -B -m unittest discover -s tests -v
 ```
 
-The checks use stubbed build operations and disposable folders to exercise menu failures, path validation, and cleanup. They do not download or launch a browser.
+The checks use stubbed build operations and disposable folders to exercise menu failures, path validation, cleanup, release detection, and installer verification. They do not download or launch a browser or publish releases.
 
 ## License
 
